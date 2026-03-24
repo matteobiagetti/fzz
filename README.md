@@ -15,18 +15,6 @@ the resulting intervals back to the original zigzag filtration.
 
 ---
 
-## Features
-
-- **Fast** — converts zigzag to standard persistence, leveraging phat's
-  optimised matrix reduction (twist reduction with bit-tree pivot columns).
-- **Easy install** — `pip install .` is all you need; no Boost, no conda.
-- **Pure pip** — the only build-time dependency is
-  [pybind11](https://github.com/pybind/pybind11), fetched automatically.
-- **Bundled phat** — the header-only phat library is included; nothing else
-  to download.
-
----
-
 ## Installation
 
 ### Requirements
