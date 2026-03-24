@@ -1,6 +1,10 @@
 #include "fzz.h"
 
-#include <boost/functional/hash.hpp>
+#include <algorithm>
+#include <unordered_map>
+#include <cassert>
+#include <functional>
+#include <memory>
 
 // phat headers
 // wrapper algorithm that computes the persistence pairs of a given boundary matrix using a specified algorithm
@@ -19,47 +23,17 @@
 namespace FZZ { 
 
 template <class ElemType>
-class VecHash { 
-public:
-    size_t operator()(const std::vector<ElemType>& v) const; 
-};
-
-template <class ElemType>
-size_t VecHash<ElemType>
-    ::operator()(const std::vector<ElemType>& v) const {
-
-    std::size_t seed = 0;
-
-    for (auto e : v) { boost::hash_combine(seed, e); }
-
-    return seed;
-}
-
-template <class ElemType>
-class VecEqual { 
-public:
-    bool operator()(const std::vector<ElemType>& v1, 
-        const std::vector<ElemType>& v2) const; 
-};
-
-template <class ElemType>
-bool VecEqual<ElemType>
-    ::operator()(const std::vector<ElemType>& v1, 
-        const std::vector<ElemType>& v2) const {
-
-    if (v1.size() != v2.size()) { return false; }
-
-    for (auto i = 0; i < v1.size(); i ++) {
-        if (v1[i] != v2[i]) {
-            return false;
+struct VecHash {
+    std::size_t operator()(const std::vector<ElemType>& v) const {
+        std::size_t seed = 0;
+        for (const auto& e : v) {
+            seed ^= std::hash<ElemType>{}(e) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         }
+        return seed;
     }
+};
 
-    return true;
-}
-
-typedef std::unordered_map< Simplex, Integer,
-    VecHash<Integer>, VecEqual<Integer> > SimplexIdMap;
+typedef std::unordered_map<Simplex, Integer, VecHash<Integer>> SimplexIdMap;
 
 void getBoundaryChainPhat(const std::vector<SimplexIdMap> &id_maps, 
     const Simplex &simp, std::vector<phat::index> &bound_c) {
@@ -73,7 +47,7 @@ void getBoundaryChainPhat(const std::vector<SimplexIdMap> &id_maps,
     Simplex bound_simp(simp.begin()+1, simp.end());
     bound_c.push_back(id_maps.at(bound_simp.size() - 1).at(bound_simp));
 
-    for (Integer i = 0; i < simp.size()-1; ++i) {
+    for (std::size_t i = 0; i < simp.size()-1; ++i) {
         bound_simp[i] = simp[i];
         bound_c.push_back(id_maps.at(bound_simp.size() - 1).at(bound_simp));
     }
@@ -96,10 +70,10 @@ void FastZigzag::compute(const std::vector<Simplex> &filt_simp,
 
     simp_num = 0;
     Integer max_dim = 0;
-    for (auto i = 0; i < filt_op.size(); ++i) {
+    for (std::size_t i = 0; i < filt_op.size(); ++i) {
         if (filt_op[i]) { 
             ++simp_num; 
-            if (filt_simp[i].size() - 1 > max_dim) { max_dim = filt_simp[i].size() - 1; }
+            if (static_cast<Integer>(filt_simp[i].size()) - 1 > max_dim) { max_dim = static_cast<Integer>(filt_simp[i].size()) - 1; }
         }
     }
 
@@ -118,13 +92,13 @@ void FastZigzag::compute(const std::vector<Simplex> &filt_simp,
     std::vector<Integer> del_ids;
     del_ids.reserve(simp_num);
 
-    std::vector<SimplexIdMap> *p_id_maps = new std::vector<SimplexIdMap>(max_dim+1);
+    auto p_id_maps = std::make_unique<std::vector<SimplexIdMap>>(max_dim+1);
     std::vector<SimplexIdMap> &id_maps = *p_id_maps;
 
     Integer orig_f_id = 0;
     Integer s_id = 1;
 
-    for (auto i = 0; i < filt_simp.size(); ++i) {
+    for (std::size_t i = 0; i < filt_simp.size(); ++i) {
         const Simplex &simp = filt_simp[i];
 
         if (filt_op[i]) {
@@ -154,7 +128,7 @@ void FastZigzag::compute(const std::vector<Simplex> &filt_simp,
     }
 
     assert(del_ids.size() == s_id-1);
-    delete p_id_maps;
+    p_id_maps.reset();
 
     assert(simp_num == del_ids.size());
 
@@ -197,8 +171,8 @@ void FastZigzag::compute(const std::vector<Simplex> &filt_simp,
             if (d < simp_num) { mapOrdIntv(b, d); } 
             else { mapRelExtIntv(p, b, d); }
 
-            if (b > filt_simp.size()) { continue; }
-            if (d > filt_simp.size()) { d = filt_simp.size(); }
+            if (b > static_cast<Integer>(filt_simp.size())) { continue; }
+            if (d > static_cast<Integer>(filt_simp.size())) { d = static_cast<Integer>(filt_simp.size()); }
             persistence->emplace_back(b, d, p);
     }
 }

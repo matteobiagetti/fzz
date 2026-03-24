@@ -2,14 +2,8 @@
 #define _FZZ_H_
 
 #include <vector>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <unordered_map>
-#include <memory>
-#include <cassert>
+#include <tuple>
+#include <cstddef>
 
 namespace FZZ { 
 

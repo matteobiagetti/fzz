@@ -1,0 +1,17 @@
+# Include C++ source files needed to build the extension
+include fzz.cpp
+include fzz.h
+include fzz_main.cpp
+include CMakeLists.txt
+
+# Include phat headers (bundled, header-only)
+recursive-include pyfzz/phat-include *.h
+
+# Include pybind11 bridge sources
+include pyfzz/pyfzz.cpp
+include pyfzz/pyfzz.h
+
+# Include sample data and tests
+include sample_filt
+include bigger_sample_filt
+include test_fzz.py

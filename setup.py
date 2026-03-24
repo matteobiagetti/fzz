@@ -1,26 +1,41 @@
-from setuptools import setup, Extension
-import os.path as pth
+"""
+Build configuration for pyfzz.
+
+This setup.py works together with pyproject.toml.  pybind11 is declared
+as a build dependency in pyproject.toml so it is always available when
+this file is executed.
+"""
+
 import os
+from setuptools import setup, Extension, find_packages
+import pybind11
 
+# ---------------------------------------------------------------------------
+# Paths  (must be relative for setuptools)
+# ---------------------------------------------------------------------------
+_PYFZZ_DIR = "pyfzz"
+_PHAT_INCLUDE = os.path.join(_PYFZZ_DIR, "phat-include")
 
-
-__module_file_dir = pth.dirname(pth.realpath(__file__))
-__cpp_src_dir = pth.join(__module_file_dir, 'pyfzz')
-src_files = []
-src_files.append(pth.join(__cpp_src_dir, 'pyfzz.cpp'))
-src_files.append(pth.join(__cpp_src_dir, '../fzz.cpp'))
-setup(name='pyfzz',
-      version='0.0.0',
-      author='Soham Mukherjee',
-      description="A simple Python wrapper for Fast Zigzag originally written by Tao Hou in C++",
-      author_email='soham.juetce@gmail.com',
-      python_requires='>=3.7',
-      classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: BSD License',
-        'Operating System :: MacOS :: MacOS X',
+# ---------------------------------------------------------------------------
+# C++ extension — compiled into the pyfzz package as _fzz_core
+# ---------------------------------------------------------------------------
+ext = Extension(
+    name="pyfzz._fzz_core",
+    sources=[
+        os.path.join(_PYFZZ_DIR, "pyfzz.cpp"),
+        "fzz.cpp",
     ],
-      ext_modules=[Extension('fzz',include_dirs=[os.path.join(__cpp_src_dir,'phat-include'), '..'],
-                             sources=src_files, extra_compile_args=['-std=c++17'])],
-                             )
+    include_dirs=[
+        pybind11.get_include(),
+        _PHAT_INCLUDE,
+        ".",                # so that #include "fzz.h" resolves
+    ],
+    language="c++",
+    extra_compile_args=["-std=c++14", "-O3", "-DNDEBUG"],
+)
 
+# ---------------------------------------------------------------------------
+setup(
+    packages=find_packages(),
+    ext_modules=[ext],
+)

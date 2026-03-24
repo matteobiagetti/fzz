@@ -1,112 +1,138 @@
-# Fast Computation of Zigzag Persistence
+# pyfzz — Fast Computation of Zigzag Persistence
 
-This project implements the algorithm described in the following paper:
+A Python package for computing **zigzag persistence barcodes** using the
+algorithm described in:
 
-[Fast Computation of Zigzag Persistence](https://arxiv.org/pdf/2204.11080.pdf)
+> **Fast Computation of Zigzag Persistence**
+> Tamal K. Dey and Tao Hou
+> *European Symposium on Algorithms (ESA)*, 2022
+> [arXiv:2204.11080](https://arxiv.org/pdf/2204.11080.pdf)
 
-by Tamal K. Dey and Tao Hou, which appears on the 2022 European Symposium on Algorithms (ESA). The programming language used is C++, but you can also use **Python** to invoke the libary with the python bindings.
+The algorithm converts a simplex-wise zigzag filtration into an equivalent
+non-zigzag (standard) filtration of a Delta-complex, computes standard
+persistence via the [phat](https://github.com/blazs/phat) library, and maps
+the resulting intervals back to the original zigzag filtration.
 
-## Change Log
+---
 
-### 2023.10.01
+## Features
 
-- We are pleased to announce python bindings of FastZigzag
+- **Fast** — converts zigzag to standard persistence, leveraging phat's
+  optimised matrix reduction (twist reduction with bit-tree pivot columns).
+- **Easy install** — `pip install .` is all you need; no Boost, no conda.
+- **Pure pip** — the only build-time dependency is
+  [pybind11](https://github.com/pybind/pybind11), fetched automatically.
+- **Bundled phat** — the header-only phat library is included; nothing else
+  to download.
 
-### 2022.08.16
+---
 
-- Wrap the computation into class `FZZ::FastZigzag` for easy invoking from C++ codes
-- Filtration does not need to end with empty complex
+## Installation
 
-## Group Information
+### Requirements
 
-This project is developed by [Tao Hou](https://taohou01.github.io) under the [CGTDA](https://www.cs.purdue.edu/homes/tamaldey/CGTDAwebsite/) research group at Purdue University lead by [Dr. Tamal K. Dey](https://www.cs.purdue.edu/homes/tamaldey/). Python bindings are due to [Soham Mukherjee](https://www.cs.purdue.edu/homes/mukher26/) who also belongs to the [CGTDA](https://www.cs.purdue.edu/homes/tamaldey/CGTDAwebsite/) research group.
+| Requirement | Notes |
+|-------------|-------|
+| Python ≥ 3.8 | |
+| C++ compiler with C++14 support | GCC ≥ 5, Clang ≥ 3.4, MSVC ≥ 2015 |
+| pip ≥ 21 | for PEP 517/518 build isolation |
 
-## About the Implementation
+### Install from source
 
-This implemented algorithm converts the input simplex-wise zigzag filtration to a **cell-wise non-zigzag** filtration of a Delta-complex with the same length, where the cells are copies of the input simplices. Then, the barcode of the original filtration is read from the barcode of the new cell-wise filtration. Details of the algorithm along with the proof can be seen in the [paper](https://arxiv.org/pdf/2204.11080.pdf). 
-
-Computation of the standard (non-zigzag) persistence is done by invoking the [phat](https://github.com/blazs/phat) library.
-
-## Using Python Version
-Assuming you have cloned the repository to a directory denoted as 'FZZ_REPO_DIR', do the following to install the FastZigzag python package:
-
+```bash
+git clone <repository-url>
+cd fzz
+pip install .
 ```
-cd [FZZ_REPO_DIR]
-python -m pip install -e .
+
+That's it. pip will automatically download pybind11, compile the C++ extension,
+and install the `pyfzz` Python package.
+
+### Development (editable) install
+
+```bash
+pip install -e ".[test]"
 ```
 
-Check `test_fzz.py` for usage example.
+This also installs [pytest](https://docs.pytest.org/) for running the test
+suite.
 
-We also recommend using anaconda ([homepage](https://www.anaconda.com/)) to manage your python development environment. The following several lines create a virtual environment dedicated for a test run of FastZigzag and install necessary packages. After that you can install FastZigzag as specified above to the dedicated environment.
+---
 
-```
-conda create -n fzz python=3.7
-conda activate fzz
-conda install boost pybind11
-```
-
-### Python API
-Import the `pyfzz` class by:
-
+## Quick Start
 
 ```python
-from pyfzz import pyfzz
-```
+from pyfzz import FastZigzag
 
-Create a class instance by:
+fzz = FastZigzag()
 
-```python
-fzz = pyfzz()
-```
-Now you can use the instance to compute barcodes by invoking `fzz.compute_zigzag(data)`. `data` encodes the input zigzag filtration which should be a list of tuples where each tuple consists of an insertion (`i`) or deletion (`d`) and the simplex being inserted or deleted; the simplex is denoted as a list of vertices, increasingly ordered. For example, a small code snippet should look like this:
+# Define a zigzag filtration: insert/delete simplices
+data = [
+    ('i', [0]),        # insert vertex 0
+    ('i', [1]),        # insert vertex 1
+    ('i', [0, 1]),     # insert edge 0-1
+    ('d', [0, 1]),     # delete edge 0-1
+    ('d', [1]),        # delete vertex 1
+]
 
-```python
-fzz = pyfzz()
-data = [('i', [0]), ('i', [1]), ('i', [0, 1]), ('d', [0, 1]), ('d', [1])]
 bars = fzz.compute_zigzag(data)
-```
-`bars` contains the barcode, a list of tuples, where each tuple is of the form `(b, d, p)` with `b` denoting the birth index, `d` denoting the death index and `p` being the homology dimension. For additional details about the format of a filtration, please consult the section [Filtration format](#filtration-format).
-
-Alternatively you can use `fzz.read_file('sample_filt')` to read the zigzag filtration and `fzz.write_file('sample_filt_pers', bars)` to write the barcodes to a file. The file format is described in the section [Filtration format](#filtration-format).
-
-
-
-
-## C++ Building
-
-Building the C++ programs utilized [cmake](https://cmake.org/) software, and all building problems should be solvable by inspecting and changing the CMakeLists.txt file. Currently the building has two dependencies: one is boost, which is quite standard (please see CMakeLists.txt); the other is [phat](https://github.com/blazs/phat), for which users should first download the codes themselves and then include the header files of phat into the project by adding
-
-```
-include_directories( "path/to/phat/include" ) 
+print(bars)
+# Each entry is (birth, death, dimension)
 ```
 
-into CMakeLists.txt.
+---
 
-Commands for building are quite standard:
+## API Reference
 
-```
-cd [dir-to-fzz]
-mkdir build
-cd build
-cmake ..
-make
+### `FastZigzag`
+
+```python
+from pyfzz import FastZigzag
 ```
 
-The software is developed and tested under MacOS and Linux. 
+#### `FastZigzag()`
 
-## Using the C++ Program
+Create a new instance. No arguments.
 
-### Using from command line
+---
 
-The compiled software runs with the following command:
+#### `compute_zigzag(data) → List[Tuple[int, int, int]]`
+
+Compute the zigzag persistence barcode.
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `data` | `List[Tuple[str, List[int]]]` | Zigzag filtration. Each element is a tuple `(op, simplex)` where `op` is `'i'` (insert) or `'d'` (delete), and `simplex` is a sorted list of vertex indices. |
+
+**Returns:**
+
+A list of `(birth, death, dimension)` tuples. Each interval `[birth, death]`
+is **closed** and uses the indexing convention where `K_0` is the empty
+complex:
 
 ```
-./fzz input_filtration_file
+F = K_0 <-> K_1 <-> ... <-> K_m
 ```
 
-### Filtration format
+So `K_1` is the complex after the first operation.
 
-A sample input filtration file is provided with the source codes:
+**Raises:**
+
+- `ValueError` / `RuntimeError` — if an operation character is not `'i'` or
+  `'d'`.
+
+---
+
+#### `read_file(filename) → List[Tuple[str, List[int]]]`  *(static method)*
+
+Read a zigzag filtration from a text file.
+
+Each line should contain an operation character (`i` or `d`) followed by
+space-separated integer vertex indices. Empty lines are skipped.
+
+**Example file (`sample_filt`):**
 
 ```
 i 0
@@ -121,34 +147,192 @@ d 1 2
 d 0 1
 ```
 
-Each line specifies an insertion (`i`) or deletion (`d`) and the simplex being inserted or deleted; the simplex is denoted as a list of vertices, increasingly ordered. An output file containing the barcode is written to the current working directory with name starting with that of the input file and ending with `_pers`.
+---
 
-The input format is as described in the [paper](https://arxiv.org/pdf/2204.11080.pdf), with the starting complex being empty (the last complex does *not* need to be empty). The filtration has the following numbering (`K_0` is empty):
+#### `write_file(filename, data)` *(static method)*
+
+Write a barcode to a text file. Each line is `dimension birth death`.
+
+---
+
+## Filtration Format
+
+A **zigzag filtration** is a sequence of simplex insertions and deletions
+starting from the empty complex:
 
 ```
-F = K_0 <-> K_1 <-> ... <-> K_{m-1} <-> K_m
+K_0 <-> K_1 <-> K_2 <-> ... <-> K_m
 ```
 
-where each simplex-wise inclusion `K_i <-> K_{i+1}` (differing on only one simplex) is specified in the input filtration file. 
+Each step either adds or removes exactly one simplex. In the input:
 
-The output for the sample input is as follows:
+- **`i v1 v2 ... vk`** — insert the simplex with vertices `v1 < v2 < ... < vk`
+- **`d v1 v2 ... vk`** — delete the simplex with vertices `v1 < v2 < ... < vk`
+
+Rules:
+
+1. A simplex can only be inserted if all its faces are already present.
+2. A simplex can only be deleted if it has no cofaces present.
+3. Vertex indices must be in ascending order.
+
+The filtration does **not** need to end with the empty complex.
+
+---
+
+## Examples
+
+### Triangle with full cycle
+
+```python
+from pyfzz import FastZigzag
+
+fzz = FastZigzag()
+
+data = [
+    ('i', [0]), ('i', [1]), ('i', [2]),     # three vertices
+    ('i', [0, 1]), ('i', [0, 2]), ('i', [1, 2]),   # three edges
+    ('i', [0, 1, 2]),                        # filled triangle
+    ('d', [0, 1, 2]),                        # remove fill
+    ('d', [1, 2]), ('d', [0, 1]),            # remove edges
+]
+
+bars = fzz.compute_zigzag(data)
+for birth, death, dim in bars:
+    print(f"H{dim}: [{birth}, {death}]")
+```
+
+Expected output:
 
 ```
-0 2 3
-0 3 4
-1 6 6
-0 1 10
-0 10 10
-1 8 8
+H0: [2, 3]
+H0: [3, 4]
+H1: [6, 6]
+H0: [1, 10]
+H0: [10, 10]
+H1: [8, 8]
 ```
-Each line denotes an interval in the barcode, with the first number being the dimension and the rest being birth and death. Note that the birth and death are start and end of the **closed** integral interval, i.e., a line `p b d` indicates a persistence interval [*b*,*d*] in dimensional *p* starting with the complex `K_b` and ending with the complex `K_d`.
 
-### Invoking from C++ source codes
+### From file
 
-To integrate the computation into your own source codes written in C++, you just need to include the source files `fzz.h` and `fzz.cpp` (which define the class `FZZ::FastZigzag`). The function which does the computation is the `compute` member function in `FZZ::FastZigzag`. See the provided example main function in `fzz_main.cpp` and the comments in `fzz.h` for the usage.
+```python
+from pyfzz import FastZigzag
+
+fzz = FastZigzag()
+data = fzz.read_file('sample_filt')
+bars = fzz.compute_zigzag(data)
+fzz.write_file('sample_filt_pers', bars)
+```
+
+---
+
+## Running Tests
+
+```bash
+pip install -e ".[test]"
+pytest test_fzz.py -v
+```
+
+---
+
+## Development
+
+### Project structure
+
+```
+fzz/
+├── pyproject.toml          # Build system & metadata (PEP 621)
+├── setup.py                # C++ extension build logic
+├── MANIFEST.in             # Source distribution file list
+├── README.md               # This file
+├── fzz.h                   # Core algorithm header
+├── fzz.cpp                 # Core algorithm implementation
+├── fzz_main.cpp            # Standalone C++ CLI (not installed by pip)
+├── CMakeLists.txt          # CMake build for C++ CLI (optional)
+├── test_fzz.py             # Test suite (pytest)
+├── sample_filt             # Sample filtration file
+├── bigger_sample_filt      # Larger benchmark filtration
+└── pyfzz/                  # Python package
+    ├── __init__.py
+    ├── pyfzz.py            # Python wrapper (FastZigzag class)
+    ├── pyfzz.h             # pybind11 bridge header
+    ├── pyfzz.cpp           # pybind11 bridge implementation
+    └── phat-include/       # Bundled phat headers
+        └── phat/
+            └── ...
+```
+
+### Architecture
+
+```
+User Python code
+       │
+       ▼
+  pyfzz.FastZigzag          (Python class — file I/O, validation)
+       │
+       ▼
+  pyfzz._fzz_core           (C++ extension via pybind11)
+       │
+       ▼
+  FZZ::FastZigzag::compute() (core algorithm in fzz.cpp)
+       │
+       ▼
+  phat library               (boundary matrix + twist reduction)
+```
+
+---
+
+## Standalone C++ CLI (optional)
+
+The repository also includes a standalone C++ command-line interface. This is
+**not** installed by pip but can be built separately if needed:
+
+```bash
+mkdir build && cd build
+cmake ..
+make
+./fzz ../sample_filt
+```
+
+Note: the CMake build requires [phat](https://github.com/blazs/phat) headers
+to be downloaded separately (see `CMakeLists.txt`).
+
+---
+
+## Citation
+
+If you use this software in your research, please cite:
+
+```bibtex
+@inproceedings{dey2022fast,
+  title     = {Fast Computation of Zigzag Persistence},
+  author    = {Dey, Tamal K. and Hou, Tao},
+  booktitle = {30th Annual European Symposium on Algorithms (ESA 2022)},
+  year      = {2022},
+  doi       = {10.4230/LIPIcs.ESA.2022.43},
+}
+```
+
+---
+
+## Credits
+
+This project was developed by [Tao Hou](https://taohou01.github.io) under the
+[CGTDA](https://www.cs.purdue.edu/homes/tamaldey/CGTDAwebsite/) research group
+at Purdue University, led by
+[Dr. Tamal K. Dey](https://www.cs.purdue.edu/homes/tamaldey/).
+Python bindings by
+[Soham Mukherjee](https://www.cs.purdue.edu/homes/mukher26/) (CGTDA group).
+
+The software uses the [phat](https://github.com/blazs/phat) library (bundled,
+LGPL-3.0).
 
 ## License
 
-THIS SOFTWARE IS PROVIDED "AS-IS". THERE IS NO WARRANTY OF ANY KIND. NEITHER THE AUTHORS NOR PURDUE UNIVERSITY WILL BE LIABLE FOR ANY DAMAGES OF ANY KIND, EVEN IF ADVISED OF SUCH POSSIBILITY. 
+THIS SOFTWARE IS PROVIDED "AS-IS". THERE IS NO WARRANTY OF ANY KIND. NEITHER
+THE AUTHORS NOR PURDUE UNIVERSITY WILL BE LIABLE FOR ANY DAMAGES OF ANY KIND,
+EVEN IF ADVISED OF SUCH POSSIBILITY.
 
-This software was developed (and is copyrighted by) the CGTDA research group at Purdue University. Please do not redistribute this software. This program is for academic research use only. This software uses the Boost and phat library, which are covered under their own licenses.
+This software was developed (and is copyrighted by) the CGTDA research group at
+Purdue University. This program is for academic research use only. This software
+uses the phat library, which is covered under its own license (LGPL-3.0).
+
